@@ -1,0 +1,31 @@
+name: sds210
+channels:
+  - conda-forge
+
+dependencies:
+  # Core
+  - python=3.12          # stable version pinned, conda-forge will resolve compatible versions of the packages below
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scipy
+
+  # Notebook environment
+  - jupyterlab
+  - ipykernel
+  - jupyterlab_widgets
+
+  # Geospatial stack
+  - geopandas
+  - rasterio
+  - xarray
+  - rioxarray
+  - contextily
+
+  # Interactive maps
+  - folium
+
+  # Utilities
+  - pyarrow
+  - tqdm
