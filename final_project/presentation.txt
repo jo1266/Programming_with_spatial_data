@@ -1,0 +1,11 @@
+Structure of the final presentation:
+
+- problem description
+
+- data and workflow
+
+- key implementation
+
+- results description
+
+- reflection
