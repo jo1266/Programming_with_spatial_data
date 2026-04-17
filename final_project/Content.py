@@ -8,8 +8,8 @@ st.write("Life Cycle Assessment (LCA) is widely used nowadyas to determine hotsp
 
 st.subheader("LCA structure according to ISO 14040/44")
 
-ROOT = Path(__file__).resolve().parent
-PIC = ROOT / "figures" / "LCA_structure.png"
+#ROOT = Path(__file__).resolve().parent
+#PIC = ROOT / "figures" / "LCA_structure.png"
 
 st.image(PIC, caption= "Source: Klöppfer and Grahl (2014)")
 
