@@ -55,12 +55,12 @@ st.subheader("Fetch Fire Data by Area")
 col1, col2 = st.columns(2)
 
 with col1:
-    west = st.number_input("West (lon)", value=112.0)
-    south = st.number_input("South (lat)", value=-44.0)
+    west = st.number_input("West (lon)", value=-10)
+    south = st.number_input("South (lat)", value=35)
 
 with col2:
-    east = st.number_input("East (lon)", value=154.0)
-    north = st.number_input("North (lat)", value=-10.0)
+    east = st.number_input("East (lon)", value=15)
+    north = st.number_input("North (lat)", value=60)
 
 days = st.slider("Days back", 1, 10, 1)
 
