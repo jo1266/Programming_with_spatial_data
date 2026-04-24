@@ -1,5 +1,7 @@
 # Project title
 
+Live wildfires across Europe
+
 ## Project description
 
 map current wildfire across country, continent, world? and classify it according to location, time since start and intensity. display all info on a streamlit dashboard allowing user to interactively explore the data and expand on some areas of interest. 
@@ -11,7 +13,7 @@ map current wildfire across country, continent, world? and classify it according
 
 ## Setup instruction
 * download the following libraries: cartopy, 
-* download the global geo package from conda forge
+* download the global geo packages from conda forge
 *
 
 ## Execution order

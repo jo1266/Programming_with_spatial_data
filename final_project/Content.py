@@ -1,24 +1,27 @@
 import streamlit as st
 from pathlib import Path
 
-st.title("Programming with Spatial Data: final project")
+st.title("Programming with Spatial Data: Final Project")
 
 st.header("Introduction")
-st.write("Life Cycle Assessment (LCA) is widely used nowadyas to determine hotspots within supply chains of various industries in order to eventually reduce their environmental impacts as much as possible.")
+st.write("The National Aeronautics ans Space Administration (NASA) provide the general public with" \
+"multiple up-to-date databases. Among these, the Fire Information for Resource Management System (FIRMS)" \
+"conatains information about live wildfires occuring world-wide. The focus here is put on western Europe" \
+"as the wild fires season has already started.")
 
-st.subheader("LCA structure according to ISO 14040/44")
+st.subheader("FRIMS resource by NASA")
 
 #ROOT = Path(__file__).resolve().parent
 #PIC = ROOT / "figures" / "LCA_structure.png"
 
-st.image(PIC, caption= "Source: Klöppfer and Grahl (2014)")
+st.video("https://www.youtube.com/watch?v=EZMACTAg4v0")
 
 st.header("About this App")
 st.write("""
 This app serves to:
-- Nicely display the results from my LCA case study
-- Show some basic statistical descriptions to highlight that one unit process scoring low in a certain impact category doesn't necessarily score as low in another impact category
-- Make the link with relevant economic instruments in a schematic way
+- Fetch the data from the FIRMS and summarize it smartly.
+- Visualize where the wildfires are actually happening across Europe.
+- 
 """)
 
 st.subheader("Navigation")
