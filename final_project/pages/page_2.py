@@ -1,18 +1,146 @@
 import streamlit as st
 import pandas as pd
-import geopandas
+import geopandas as gpd
 import matplotlib.pyplot as plt
+import pydeck as pdk
 import contextily as cx
 from geodatasets import get_path
 
+import streamlit as st
+import pandas as pd
+
+st.title("🗺 Fire Map View")
+
+# --- Check if data exists ---
+if "df" not in st.session_state:
+    st.warning("No data available. Please fetch data on the main page first.")
+    st.stop()
+
+df = st.session_state["df"]
+
+# --- Validate data ---
+if df.empty:
+    st.warning("Dataset is empty.")
+    st.stop()
+
+if "latitude" not in df.columns or "longitude" not in df.columns:
+    st.error("Missing latitude/longitude columns.")
+    st.stop()
+
+# --- Display map ---
+st.subheader("🔥 Fire Detections")
+
+map_df = df.rename(columns={"latitude": "lat", "longitude": "lon"})
+
+st.map(map_df)
+
+st.subheader("⏱ Time Since Detection")
+
+st.write(df.dtypes)
+
+# --- Create datetime ---
+
+# --- Ensure acq_date is string ---
+df["acq_date"] = df["acq_date"].astype(str)
+
+# --- Ensure acq_time is zero-padded string ---
+df["acq_time"] = df["acq_time"].astype(str).str.zfill(4)
+
+df["acq_datetime"] = pd.to_datetime(
+    df["acq_date"] + " " + df["acq_time"],
+    format="%Y-%m-%d %H%M",
+    errors="coerce"
+)
+
+st.write(df.dtypes)
+
+# --- Convert to GeoDataFrame ---
+gdf = gpd.GeoDataFrame(
+    df,
+    geometry=gpd.points_from_xy(df.longitude, df.latitude),
+    crs="EPSG:4326"
+)
+
+# --- time reference ---
+now = pd.Timestamp.now()
+
+# --- categories ---
+df1 = df[df["acq_datetime"] >= (now - pd.Timedelta(hours=1))].copy()
+df2 = df[(df["acq_datetime"] >= (now - pd.Timedelta(hours=4))) &
+         (df["acq_datetime"] < (now - pd.Timedelta(hours=1)))].copy()
+df3 = df[(df["acq_datetime"] >= (now - pd.Timedelta(hours=12))) &
+         (df["acq_datetime"] < (now - pd.Timedelta(hours=4)))].copy()
+df4 = df[df["acq_datetime"] < (now - pd.Timedelta(hours=12))].copy()
+
+# --- add category labels ---
+df1["category"] = "≤1h"
+df2["category"] = "1–4h"
+df3["category"] = "4–12h"
+df4["category"] = ">12h"
+
+# --- merge ---
+df_all = pd.concat([df1, df2, df3, df4])
+
+# --- rename for map ---
+df_all = df_all.rename(columns={"latitude": "lat", "longitude": "lon"})
+
+# --- color encoding ---
+color_map = {
+    "≤1h": [139, 0, 0],       # dark red
+    "1–4h": [255, 0, 0],      # red
+    "4–12h": [255, 165, 0],   # orange
+    ">12h": [255, 255, 0],    # yellow
+}
+
+df_all["color"] = df_all["category"].map(color_map)
+
+# --- interactive map ---
+st.map(df_all[["lat", "lon"]])
+
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=df_all,
+    get_position='[lon, lat]',
+    get_fill_color='color',
+    radius_units="pixels",
+    get_radius=5,
+    pickable=True
+)
+
+view_state = pdk.ViewState(
+    latitude=df_all["lat"].mean(),
+    longitude=df_all["lon"].mean(),
+    zoom=3
+)
+
+deck_1 = pdk.Deck(
+    layers=[layer],
+    initial_view_state=view_state,
+    tooltip={"text": "{category}"}
+)
+
+st.pydeck_chart(deck_1)
+
+# --- 🔥 Topographic terrain map ---
+
+deck_2 = pdk.Deck(
+    layers=[layer],
+    initial_view_state=view_state,
+    map_style="mapbox://styles/mapbox/light-v11",  # 🏔️ topo style
+    tooltip={"text": "{category}"}
+)
+
+st.pydeck_chart(deck_2)
+
+"""
 st.title("🔥 Fire Map Visualization")
 
 # --- Load data from first page ---
-if "df_area" not in st.session_state:
+if "df" not in st.session_state:
     st.error("No data found. Please fetch data on the main page first.")
     st.stop()
 
-df_area = st.session_state["df_area"]
+df = st.session_state["df"]
 
 # --- Load world basemap ---
 @st.cache_data
@@ -25,8 +153,8 @@ world = world.to_crs("EPSG:4326")
 
 # --- Convert to GeoDataFrame ---
 gdf = geopandas.GeoDataFrame(
-    df_area,
-    geometry=geopandas.points_from_xy(df_area.longitude, df_area.latitude),
+    df,
+    geometry=geopandas.points_from_xy(df.longitude, df.latitude),
     crs="EPSG:4326"
 )
 
@@ -143,3 +271,5 @@ if len(gdf1) > 0:
 cx.add_basemap(ax4, crs=gdf.crs)
 
 st.pyplot(fig4)
+
+"""
