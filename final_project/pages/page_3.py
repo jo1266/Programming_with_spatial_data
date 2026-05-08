@@ -33,15 +33,15 @@ lon_range = abs(maxx - minx)
 max_range = max(lat_range, lon_range)
 
 if max_range < 2:
-    zoom = 7
+    zoom = 8.5
 elif max_range < 5:
-    zoom = 6
+    zoom = 7.5
 elif max_range < 10:
-    zoom = 5
+    zoom = 6.5
 elif max_range < 20:
-    zoom = 4
+    zoom = 5.5
 else:
-    zoom = 3
+    zoom = 4.5
 
 html_code = f"""
 <!DOCTYPE html>
