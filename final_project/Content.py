@@ -11,9 +11,6 @@ st.write("The National Aeronautics ans Space Administration (NASA) provide the g
 
 st.subheader("FRIMS resource by NASA")
 
-#ROOT = Path(__file__).resolve().parent
-#PIC = ROOT / "figures" / "LCA_structure.png"
-
 st.video("https://www.youtube.com/watch?v=EZMACTAg4v0")
 
 st.header("About this App")

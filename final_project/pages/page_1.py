@@ -152,8 +152,8 @@ if "df_avail" in st.session_state:
         with st.expander("🔍 Full metadata"):
             st.write(dataset_info)
 
-    ROOT = Path(__file__).resolve().parent
-    DOC = ROOT / "final_project" / "LCA_structure.png"
+        #ROOT = Path(__file__).resolve().parent
+        #DOC = ROOT / "final_project" / "LCA_structure.png"
 
     else:
         st.info("Select a dataset")
