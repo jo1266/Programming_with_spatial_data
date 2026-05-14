@@ -1,14 +1,14 @@
 # Project title
 
-Live wildfires across Europe
+Live statistics and visualization of wildfires across Europe
 
 ## Project description
 
 map current wildfire across country, continent, world? and classify it according to location, time since start and intensity. display all info on a streamlit dashboard allowing user to interactively explore the data and expand on some areas of interest. 
 
 ## Data sources
-* https://firms.modaps.eosdis.nasa.gov/content/academy/data_api/firms_api_use.html
-* https://firms.modaps.eosdis.nasa.gov/content/academy/data_visualization/firms_visualization.html
+* Primary code structure: https://firms.modaps.eosdis.nasa.gov/content/academy/data_api/firms_api_use.html
+* Initial ideas of visualization: https://firms.modaps.eosdis.nasa.gov/content/academy/data_visualization/firms_visualization.html
 *
 
 ## Setup instruction
@@ -17,6 +17,6 @@ map current wildfire across country, continent, world? and classify it according
 *
 
 ## Execution order
-*
+* Simply enter the following command in your terminal: streamlit run content.py
 *
 *
