@@ -5,10 +5,12 @@ import streamlit as st
 st.title("Windy layers")
 st.subheader("Get key-insights about the consequences of these fires")
 
+# Windy layers selection
 layer = st.selectbox("Select Wind Layer", ["no2", "aod550", "tcso2", "drought40", "fwi", "temp"])
 
 st.subheader("🔎 Data Check")
 
+# Data availability check
 if "selected_country" not in st.session_state:
     st.warning("Missing selected country.")
     st.stop()
@@ -17,21 +19,20 @@ if "country_bounds" not in st.session_state:
     st.warning("Country bounds not available.")
     st.stop()
 
-
+# Data validation
 minx = st.session_state["country_bounds"]["minx"]
 miny = st.session_state["country_bounds"]["miny"]
 maxx = st.session_state["country_bounds"]["maxx"]
 maxy = st.session_state["country_bounds"]["maxy"]
 
-
+# Initial calculations
 center_lat = (miny + maxy) / 2
 center_lon = (minx + maxx) / 2
-
-# crude zoom estimation based on bbox size
 lat_range = abs(maxy - miny)
 lon_range = abs(maxx - minx)
 max_range = max(lat_range, lon_range)
 
+# Zooming settings
 if max_range < 2:
     zoom = 8.5
 elif max_range < 5:
@@ -43,6 +44,7 @@ elif max_range < 20:
 else:
     zoom = 4.5
 
+# Fetching windy map via API
 html_code = f"""
 <!DOCTYPE html>
 <html>
@@ -89,4 +91,5 @@ windyInit(options, windyAPI => {{
 </html>
 """
 
+# Windy map visualization
 st.components.v1.html(html_code, height=500)

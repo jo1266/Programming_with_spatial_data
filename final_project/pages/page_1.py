@@ -10,11 +10,13 @@ import os
 
 st.title("FIRMS Country Explorer")
 
+# Load base map
 @st.cache_data
 def load_world():
     url = "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip"
     return gpd.read_file(url)
 
+# Define europe
 world = load_world()
 europe = world[world["CONTINENT"] == "Europe"]
 
@@ -24,7 +26,7 @@ europe_json = json.loads(europe.to_json())
 layer = pdk.Layer(
     "GeoJsonLayer",
     data=europe_json,
-    id="countries",  # IMPORTANT
+    id="countries",
     pickable=True,
     auto_highlight=True,
     stroked=True,
@@ -33,26 +35,31 @@ layer = pdk.Layer(
     get_line_color=[0, 0, 0],
 )
 
+# Set PyDeck interface
 view_state = pdk.ViewState(
     latitude=50,
     longitude=10,
     zoom=3
 )
 
+# Get country names by hoovering on the map
 deck = pdk.Deck(
     layers=[layer],
     initial_view_state=view_state,
     tooltip={"text": "{NAME}"}
 )
 
+# Country selection function
 event = st.pydeck_chart(
     deck,
     use_container_width=True,
     on_select="rerun"
 )
 
+# Variable definition
 selected_country = None
 
+# Saving selection within an object type
 if event is not None:
     selection = event.get("selection", {})
     objects = selection.get("objects", {}).get("countries", [])
@@ -61,22 +68,27 @@ if event is not None:
         name = objects[0]["properties"]["NAME"]
         st.session_state["selected_country"] = name
 
+# Keeping selection active to re-use it later
 selected_country = st.session_state.get("selected_country")
 
+# Selection status tool
 if selected_country:
     st.success(f"Selected country: {selected_country}")
 else:
     st.info("Click on a country")
 
+# Getting geographical extent of the selected country
 if selected_country:
     country_geom = europe[europe["NAME"] == selected_country].geometry.values[0]
     minx, miny, maxx, maxy = country_geom.bounds
 
     st.write(f"Geographical extent (West, South, Est, North): {minx}, {miny}, {maxx}, {maxy}")
 
+# API infos
 API_KEY = "b2f10217e4419203b51cddefcc979791"
 api_url = f"https://firms.modaps.eosdis.nasa.gov/mapserver/mapkey_status/?MAP_KEY={API_KEY}"
 
+# API status function
 #@st.cache_data
 def get_api_status():
     response = requests.get(api_url)
@@ -86,6 +98,7 @@ def get_api_status():
 
 status_data = get_api_status()
 
+# Initial API status
 if status_data:
     df_status = pd.Series(status_data)
     st.subheader("API Status")
@@ -100,7 +113,7 @@ if status_data:
 else:
     st.error("Failed to fetch API status")
 
-# --- Transaction count ---
+# Transaction count function
 def get_transaction_count():
     try:
         data = get_api_status()
@@ -108,15 +121,17 @@ def get_transaction_count():
     except:
         return 0
 
-# --- Data availability ---
+# Getting datasets availability
 st.subheader("Available Datasets")
 
 da_url = f"https://firms.modaps.eosdis.nasa.gov/api/data_availability/csv/{API_KEY}/all"
 
+# Function to fetch available datasets
 #@st.cache_data
 def load_availability():
     return pd.read_csv(da_url)
 
+# Fetching available datasets and transaction count
 if st.button("Load Available Datasets"):
     start_count = get_transaction_count()
     df_avail = load_availability()
@@ -125,6 +140,7 @@ if st.button("Load Available Datasets"):
     end_count = get_transaction_count()
     st.success(f"Used transactions: {end_count - start_count}")
 
+# Keeping selected dataset active
 if "df_avail" in st.session_state:
     df_avail = st.session_state["df_avail"]
 
@@ -134,6 +150,7 @@ if "df_avail" in st.session_state:
         "🔎 Select dataset",
         df_avail["data_id"].unique()
     )
+    # Getting datasets infos
     if selected_dataset:
         st.success(f"Selected dataset: {selected_dataset}")
 
@@ -162,8 +179,10 @@ else:
     st.info("Click 'Load Available Datasets' first")
     st.stop()
 
+# Selection of timeframe
 days = st.slider("Days back", 1, 10, 1)
 
+# FIRMS data fetching 
 if selected_country and st.button("Fetch FIRMS Data"):
 
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
@@ -174,10 +193,10 @@ if selected_country and st.button("Fetch FIRMS Data"):
         df = pd.read_csv(url)
 
         st.session_state["df"] = df
-        # --- selected country ---
+        # Selected country
         st.session_state["selected_country"] = selected_country
 
-        # --- country geometry bounds ---
+        # Country geometry bounds
         st.session_state["country_bounds"] = {
         "minx": minx,
         "miny": miny,
@@ -185,13 +204,14 @@ if selected_country and st.button("Fetch FIRMS Data"):
         "maxy": maxy
         }
 
+        # Transaction count
         end_count = get_transaction_count()
         st.success(f"Used {end_count - start_count} transactions")
 
         st.subheader("🔥 Fire Data")
         st.dataframe(df)
 
-        # --- STATS ---
+        # Statistical description
         st.subheader("📊 Basic Statistics")
 
         col1, col2, col3 = st.columns(3)

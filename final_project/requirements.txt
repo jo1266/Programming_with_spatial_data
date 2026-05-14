@@ -1,0 +1,13 @@
+streamlit
+pandas
+requests
+geopandas
+matplotlib
+contextily
+pydeck
+shapely
+pyproj
+fiona
+geodatasets
+pypdf
+openai
