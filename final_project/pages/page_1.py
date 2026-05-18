@@ -150,24 +150,127 @@ if "df_avail" in st.session_state:
         "🔎 Select dataset",
         df_avail["data_id"].unique()
     )
+
+    # Detailed description of each dataset
+    DATASET_DESCRIPTIONS = {
+    "MODIS_NRT": "Near real-time fire detection used for fast updates containing moderate detail.",
+    "MODIS_SP": "Post-processed MODIS fire data with more accuracy than 'MODIS_NRT' but delayed availability.",
+
+    "VIIRS_SNPP_NRT": "Near real-time fire detection that is reliable and widely used.",
+    "VIIRS_SNPP_SP": "Post-processed data with improved accuracy and fewer false detections.",
+
+    "VIIRS_NOAA20_NRT": "Near real-time fire detection with enhanced temporal coverage.",
+    "VIIRS_NOAA20_SP": "Validated dataset from 'VIIRS_NOAA20_NRT' with higher reliability but delayed access.",
+
+    "VIIRS_NOAA21_NRT": "More recent dataset compared to 'VIIRS_NOAA20_NRT' that improves revisit frequency and coverage.",
+
+    "LANDSAT_NRT": "Very high-resolution fire detection that is highly detailed but with infrequent coverage.",
+    "GOES_NRT": "Geostationary fire detection with excellent temporal tracking, but coarse resolution.",
+
+    "BA_MODIS": "Burned area dataset that identifies areas already affected by fires.",
+    "BA_VIIRS": "High-resolution burned area mapping for post-fire analysis."
+    }
+
+    # Metadata of each dataset
+    DATASET_METADATA = {
+    "MODIS_NRT": {
+        "sensor": "MODIS",
+        "satellite": "Terra & Aqua",
+        "resolution": "~1 km",
+        "coverage": "Global"
+    },
+    "MODIS_SP": {
+        "sensor": "MODIS",
+        "satellite": "Terra & Aqua",
+        "resolution": "~1 km",
+        "coverage": "Global"
+    },
+
+    "VIIRS_SNPP_NRT": {
+        "sensor": "VIIRS",
+        "satellite": "Suomi NPP",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    },
+    "VIIRS_SNPP_SP": {
+        "sensor": "VIIRS",
+        "satellite": "Suomi NPP",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    },
+
+    "VIIRS_NOAA20_NRT": {
+        "sensor": "VIIRS",
+        "satellite": "NOAA-20",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    },
+    "VIIRS_NOAA20_SP": {
+        "sensor": "VIIRS",
+        "satellite": "NOAA-20",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    },
+
+    "VIIRS_NOAA21_NRT": {
+        "sensor": "VIIRS",
+        "satellite": "NOAA-21",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    },
+
+    "LANDSAT_NRT": {
+        "sensor": "OLI/TIRS",
+        "satellite": "Landsat 8/9",
+        "resolution": "~30 m",
+        "coverage": "Global (low revisit)"
+    },
+
+    "GOES_NRT": {
+        "sensor": "ABI",
+        "satellite": "GOES-East/West",
+        "resolution": "~2 km",
+        "coverage": "Americas"
+    },
+
+    "BA_MODIS": {
+        "sensor": "MODIS",
+        "satellite": "Terra & Aqua",
+        "resolution": "~500 m",
+        "coverage": "Global"
+    },
+
+    "BA_VIIRS": {
+        "sensor": "VIIRS",
+        "satellite": "SNPP / NOAA-20",
+        "resolution": "~375 m",
+        "coverage": "Global"
+    }
+    }
+    
     # Getting datasets infos
     if selected_dataset:
         st.success(f"Selected dataset: {selected_dataset}")
 
-        dataset_info = df_avail[df_avail["data_id"] == selected_dataset].iloc[0]
+        # --- Description ---
+        description = DATASET_DESCRIPTIONS.get(
+        selected_dataset,
+        "No description available."
+        )
 
-        st.subheader(f"📦 {selected_dataset}")
+        st.markdown("### General description")
+        st.info(description)
+
+        metadata = DATASET_METADATA.get(selected_dataset, {})
+
+        st.markdown("### Dataset metadata")
 
         col1, col2, col3, col4 = st.columns(4)
 
-        col1.metric("**Sensor:**", dataset_info.get("sensor", "N/A"))
-        col2.metric("**Satellite:**", dataset_info.get("satellite", "N/A"))
-        col3.metric("**Resolution:**", dataset_info.get("resolution", "N/A"))
-        col4.metric("**Coverage:**", dataset_info.get("coverage", "N/A"))
-
-        # Optional: full row
-        with st.expander("🔍 Full metadata"):
-            st.write(dataset_info)
+        col1.metric("**Sensor:**", metadata.get("sensor", "N/A"), width="content")
+        col2.metric("**Satellite:**", metadata.get("satellite", "N/A"), width="stretch")
+        col3.metric("**Resolution:**", metadata.get("resolution", "N/A"), width="content")
+        col4.metric("**Coverage:**", metadata.get("coverage", "N/A"), width="content")
 
         #ROOT = Path(__file__).resolve().parent
         #DOC = ROOT / "final_project" / "LCA_structure.png"

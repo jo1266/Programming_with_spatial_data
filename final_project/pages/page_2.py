@@ -25,7 +25,7 @@ if "latitude" not in df.columns or "longitude" not in df.columns:
     st.stop()
 
 # Display map
-st.subheader("🔥 Fire Detections")
+st.subheader(" Current wildfires visualization")
 
 map_df = df.rename(columns={"latitude": "lat", "longitude": "lon"})
 
@@ -84,7 +84,9 @@ color_map = {
 
 df_all["color"] = df_all["category"].map(color_map)
 
-st.subheader("Fires timing categories")
+st.subheader("Wirldfires starting time categories")
+
+st.info("Hover over points to get information")
 
 # Implementing interactive map
 
@@ -122,12 +124,20 @@ st.subheader("Multi layer map")
 center_lat = df["latitude"].mean()
 center_lon = df["longitude"].mean()
 
-tile = st.selectbox("Select map tile",
-            ("OpenTopoMap",     # topographic
-            "Stamen Terrain",   # terrain
-            "CartoDB positron", # base map
-            "Esri.WorldImagery")# sattelite
+available_layers = {
+    "topographic": "OpenTopoMap",
+    "satellite": "Esri.WorldImagery",
+    "base map": "CartoDB positron",
+    "terrain": "Stamen Terrain"
+}
+
+selection = st.selectbox(
+    label="Select the desired map layer",
+    options=available_layers.keys()
 )
+
+tile = available_layers[selection]
+
 
 # Map visualization
 m = folium.Map(

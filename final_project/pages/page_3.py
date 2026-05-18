@@ -1,14 +1,9 @@
 import streamlit as st
 
 
+st.title("Potential wildfires consequences")
 
-st.title("Windy layers")
-st.subheader("Get key-insights about the consequences of these fires")
-
-# Windy layers selection
-layer = st.selectbox("Select Wind Layer", ["no2", "aod550", "tcso2", "drought40", "fwi", "temp"])
-
-st.subheader("🔎 Data Check")
+st.subheader("Live windy data")
 
 # Data availability check
 if "selected_country" not in st.session_state:
@@ -18,6 +13,8 @@ if "selected_country" not in st.session_state:
 if "country_bounds" not in st.session_state:
     st.warning("Country bounds not available.")
     st.stop()
+
+st.info("Select the desired layer on the top right corner of the map")
 
 # Data validation
 minx = st.session_state["country_bounds"]["minx"]
@@ -77,8 +74,8 @@ windyInit(options, windyAPI => {{
     store.on('ready', () => {{
         requestAnimationFrame(() => {{
             setTimeout(() => {{
-                console.log("Layer:", '{layer}');
-                store.set('overlay', "{layer}");
+                console.log("Layer:", 'layer');
+                store.set('overlay', "layer");
             }}, 3000);
         }});
     }});
