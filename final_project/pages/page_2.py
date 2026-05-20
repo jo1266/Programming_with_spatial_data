@@ -5,14 +5,14 @@ import pydeck as pdk
 import folium
 from streamlit_folium import st_folium
 
-st.title("🗺 Fire Map View")
+st.title("Fires Visualization")
 
 # Existing data check
 if "df" not in st.session_state:
     st.warning("No data available. Please fetch data on the main page first.")
     st.stop()
-
-df = st.session_state["df"]
+else:
+    df = st.session_state["df"]
 
 # Data validation
 if df.empty:
@@ -136,6 +136,8 @@ selection = st.selectbox(
     options=available_layers.keys()
 )
 
+st.info("Click on points to get more information")
+
 tile = available_layers[selection]
 
 
@@ -146,14 +148,106 @@ m = folium.Map(
     tiles=tile
     )
 
-# Add markers
-for _, row in df.iterrows():
-    folium.CircleMarker(
-        location=[row["latitude"], row["longitude"]],
-        radius=3,
-        color="red",
-        fill=True,
-        fill_opacity=0.7
-    ).add_to(m)
+
+# ---------------------------------------------------
+# Helper function to add category markers
+# ---------------------------------------------------
+def add_category_markers(data, color, name):
+
+    feature_group = folium.FeatureGroup(name=name)
+
+    for _, row in data.iterrows():
+
+        folium.CircleMarker(
+            location=[row["latitude"], row["longitude"]],
+            radius=4,
+
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.75,
+
+            popup=f"""
+            <b>Detection time:</b> {row['acq_datetime']}<br>
+            <b>Brightness:</b> {row.get('brightness', 'N/A')}<br>
+            <b>Confidence:</b> {row.get('confidence', 'N/A')}
+            """
+        ).add_to(feature_group)
+
+    feature_group.add_to(m)
+
+# ---------------------------------------------------
+# Add already-defined time categories
+# ---------------------------------------------------
+if not df1.empty:
+    add_category_markers(df1, "darkred", "Fires category ≤1 [h]")
+
+if not df2.empty:
+    add_category_markers(df2, "red", "Fires category 1-4 [h]")
+
+if not df3.empty:
+    add_category_markers(df3, "orange", "Fires category 4-12 [h]")
+
+if not df4.empty:
+    add_category_markers(df4, "yellow", "Fires category >12 [h]")
+
+# ---------------------------------------------------
+# Layer control
+# ---------------------------------------------------
+folium.LayerControl(collapsed=True).add_to(m)
+
+# ---------------------------------------------------
+# Add legend
+# ---------------------------------------------------
+legend_html = """
+<div style="
+position: fixed;
+bottom: 50px;
+left: 10px;
+width: 180px;
+z-index:9999;
+background-color:white;
+padding:10px;
+border:2px solid grey;
+border-radius:8px;
+font-size:14px;
+color: black;
+">
+
+<b>Fire started:</b><br>
+
+<i style="background:darkred;
+width:12px;
+height:12px;
+display:inline-block;
+border-radius:50%;"></i>
+≤1 hour ago<br>
+
+<i style="background:red;
+width:12px;
+height:12px;
+display:inline-block;
+border-radius:50%;"></i>
+1-4 hours ago<br>
+
+<i style="background:orange;
+width:12px;
+height:12px;
+display:inline-block;
+border-radius:50%;"></i>
+4-12 hours ago<br>
+
+<i style="background:yellow;
+width:12px;
+height:12px;
+display:inline-block;
+border-radius:50%;
+border:1px solid black;"></i>
+>12 hours ago
+
+</div>
+"""
+
+m.get_root().html.add_child(folium.Element(legend_html))
 
 st_folium(m, width=700, height=500)

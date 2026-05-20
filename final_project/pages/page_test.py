@@ -7,147 +7,18 @@ import requests
 import pandas as pd
 import geopandas as gpd
 import pydeck as pdk
+import numpy as np
 
-# Data availability check
-if "selected_country" not in st.session_state:
-    st.warning("Missing selected country.")
-    st.stop()
+# Add markers
+for _, row in df.iterrows():
+    folium.CircleMarker(
+        location=[row["latitude"], row["longitude"]],
+        radius=3,
+        color="red",
+        fill=True,
+        fill_opacity=0.7
+    ).add_to(m)
 
-if "country_bounds" not in st.session_state:
-    st.warning("Country bounds not available.")
-    st.stop()
-
-# Data validation
-minx = st.session_state["country_bounds"]["minx"]
-miny = st.session_state["country_bounds"]["miny"]
-maxx = st.session_state["country_bounds"]["maxx"]
-maxy = st.session_state["country_bounds"]["maxy"]
-
-# Initial calculations
-center_lat = (miny + maxy) / 2
-center_lon = (minx + maxx) / 2
-lat_range = abs(maxy - miny)
-lon_range = abs(maxx - minx)
-max_range = max(lat_range, lon_range)
-
-# Zooming settings
-if max_range < 2:
-    zoom = 8.5
-elif max_range < 5:
-    zoom = 7.5
-elif max_range < 10:
-    zoom = 6.5
-elif max_range < 20:
-    zoom = 5.5
-else:
-    zoom = 4.5
-
-VARIABLES = {
-    "PM2.5": "pm2_5",
-    "PM10": "pm10",
-    "Carbon Monoxide (CO)": "carbon_monoxide",
-    "Nitrogen Dioxide (NO2)": "nitrogen_dioxide",
-    "Ozone (O3)": "ozone",
-    "Sulphur Dioxide (SO2)": "sulphur_dioxide",
-    "Aerosol Optical Depth": "aerosol_optical_depth",
-    "Dust": "dust",
-    "UV Index": "uv_index"
-}
-
-selected_vars = st.multiselect(
-    "Select air quality variables",
-    list(VARIABLES.keys()),
-    default=["PM2.5", "PM10"]
-)
-
-var_params = ",".join([VARIABLES[v] for v in selected_vars])
-
-# -----------------------------
-# API request
-# -----------------------------
-@st.cache_data
-def fetch_air_quality(minx, miny, maxx, maxy, variables):
-    url = (
-        "https://air-quality-api.open-meteo.com/v1/air-quality"
-        f"?latitude={ (miny + maxy) / 2 }"
-        f"&longitude={ (minx + maxx) / 2 }"
-        f"&hourly={variables}"
-        "&timezone=auto"
-    )
-
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json()
-
-if st.button("Fetch Air Quality Data"):
-
-    try:
-        data = fetch_air_quality(minx, miny, maxx, maxy, var_params)
-
-        # -----------------------------
-        # Convert to dataframe
-        # -----------------------------
-        df = pd.DataFrame(data["hourly"])
-        st.session_state["air_quality_df"] = df
-
-        st.success("Data loaded successfully")
-
-        st.subheader("📊 Air Quality Data")
-        st.dataframe(df)
-
-        # -----------------------------
-        # Simple plots
-        # -----------------------------
-        if "pm2_5" in df.columns:
-            st.line_chart(df.set_index("time")["pm2_5"])
-
-        if "pm10" in df.columns:
-            st.line_chart(df.set_index("time")["pm10"])
-
-    except Exception as e:
-        st.error("Failed to fetch air quality data")
-        st.exception(e)
-
- # -----------------------------
-    # Color scale (simple AQI logic)
-    # -----------------------------
-    def color(pm):
-        if pm < 10:
-            return [0, 200, 0]      # good
-        elif pm < 20:
-            return [255, 200, 0]    # moderate
-        elif pm < 30:
-            return [255, 100, 0]    # unhealthy for sensitive
-        else:
-            return [200, 0, 0]      # unhealthy
-
-    df["color"] = df["pm25"].apply(color)
-
-    # -----------------------------
-    # PyDeck interactive map
-    # -----------------------------
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df,
-        get_position=["lon", "lat"],
-        get_fill_color="color",
-        get_radius=20000,
-        pickable=True,
-    )
-
-    view_state = pdk.ViewState(
-        latitude=df["lat"].mean(),
-        longitude=df["lon"].mean(),
-        zoom=4,
-    )
-
-    deck = pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={"text": "PM2.5: {pm25}"}
-    )
-
-    st.pydeck_chart(deck)
 
 '''
 ROOT = Path(__file__).resolve().parent

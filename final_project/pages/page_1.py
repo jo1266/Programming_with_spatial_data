@@ -4,9 +4,6 @@ import geopandas as gpd
 import pydeck as pdk
 import json
 import requests
-from pypdf import PdfReader
-from openai import OpenAI
-import os
 
 st.title("FIRMS Country Explorer")
 
@@ -56,8 +53,9 @@ event = st.pydeck_chart(
     on_select="rerun"
 )
 
-# Variable definition
-selected_country = None
+# Initialize state once
+if "selected_country" not in st.session_state:
+    st.session_state["selected_country"] = None
 
 # Saving selection within an object type
 if event is not None:
@@ -69,7 +67,7 @@ if event is not None:
         st.session_state["selected_country"] = name
 
 # Keeping selection active to re-use it later
-selected_country = st.session_state.get("selected_country")
+selected_country = st.session_state["selected_country"]
 
 # Selection status tool
 if selected_country:
@@ -81,8 +79,15 @@ else:
 if selected_country:
     country_geom = europe[europe["NAME"] == selected_country].geometry.values[0]
     minx, miny, maxx, maxy = country_geom.bounds
-
     st.write(f"Geographical extent (West, South, Est, North): {minx}, {miny}, {maxx}, {maxy}")
+
+    # Keeping country geometry bounds active
+    st.session_state["country_bounds"] = {
+        "minx": minx,
+        "miny": miny,
+        "maxx": maxx,
+        "maxy": maxy
+    }
 
 # API infos
 API_KEY = "b2f10217e4419203b51cddefcc979791"
@@ -147,7 +152,7 @@ if "df_avail" in st.session_state:
     st.dataframe(df_avail)
 
     selected_dataset = st.selectbox(
-        "🔎 Select dataset",
+        "Select a dataset",
         df_avail["data_id"].unique()
     )
 
@@ -272,68 +277,50 @@ if "df_avail" in st.session_state:
         col3.metric("**Resolution:**", metadata.get("resolution", "N/A"), width="content")
         col4.metric("**Coverage:**", metadata.get("coverage", "N/A"), width="content")
 
-        #ROOT = Path(__file__).resolve().parent
-        #DOC = ROOT / "final_project" / "LCA_structure.png"
-
     else:
         st.info("Select a dataset")
 
 else:
-    st.info("Click 'Load Available Datasets' first")
+    st.info("Click 'Load Available Datasets' ")
     st.stop()
 
 # Selection of timeframe
 days = st.slider("Days back", 1, 10, 1)
 
+# Data source
+url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
+
 # FIRMS data fetching 
 if selected_country and st.button("Fetch FIRMS Data"):
-
-    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
-    
+    st.subheader("Live Wildfires Data")
     start_count = get_transaction_count()
+    df = pd.read_csv(url)
+    st.session_state["df"] = df
+    st.dataframe(df)
+    end_count = get_transaction_count()
+    st.success(f"Used {end_count - start_count} transactions")
 
-    try:
-        df = pd.read_csv(url)
+if "df" in st.session_state:
+    st.session_state["df"] = df
 
-        st.session_state["df"] = df
-        # Selected country
-        st.session_state["selected_country"] = selected_country
+    # Statistical description
+    st.subheader("📊 Basic Statistics")
 
-        # Country geometry bounds
-        st.session_state["country_bounds"] = {
-        "minx": minx,
-        "miny": miny,
-        "maxx": maxx,
-        "maxy": maxy
-        }
+    col1, col2, col3 = st.columns(3)
 
-        # Transaction count
-        end_count = get_transaction_count()
-        st.success(f"Used {end_count - start_count} transactions")
+    col1.metric("Total detections", len(df))
 
-        st.subheader("🔥 Fire Data")
-        st.dataframe(df)
+    if "confidence" in df.columns:
+        col2.metric("Average confidence",
+                    round(df["confidence"].mean(), 2))
+    else:
+        col2.metric("Average confidence", "N/A")
 
-        # Statistical description
-        st.subheader("📊 Basic Statistics")
+    if "brightness" in df.columns:
+        col3.metric("Average brightness",
+                    round(df["brightness"].mean(), 2))
+    else:
+        col3.metric("Time trend", "N/A")
 
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric("Total detections", len(df))
-
-        if "confidence" in df.columns:
-            col2.metric("Average confidence",
-                        round(df["confidence"].mean(), 2))
-        else:
-            col2.metric("Average confidence", "N/A")
-
-        if "brightness" in df.columns:
-            col3.metric("Average brightness",
-                        round(df["brightness"].mean(), 2))
-        else:
-            col3.metric("Time trend", "N/A")
-
-    except Exception as e:
-        st.error("Error fetching data")
-        st.text(str(e))
-
+else:
+    st.error("Fetch data first")
