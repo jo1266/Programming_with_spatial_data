@@ -1,13 +1,9 @@
 streamlit
 pandas
 requests
+json
 geopandas
-matplotlib
-contextily
 pydeck
-shapely
-pyproj
-fiona
-geodatasets
-pypdf
-openai
+folium
+streamlit_folium
+numpy

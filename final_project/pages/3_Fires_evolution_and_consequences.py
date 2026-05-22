@@ -5,7 +5,7 @@ import pydeck as pdk
 import numpy as np
 
 
-st.title("Potential wildfires consequences")
+st.title("Potential wildfires evolution and consequences")
 
 st.subheader("Live windy data")
 
@@ -95,8 +95,10 @@ windyInit(options, windyAPI => {{
 # Windy map visualization
 st.components.v1.html(html_code, height=500)
 
+# Air quality maps building
 st.subheader("Air Quality Visualization")
 
+# Air quality variables
 VARIABLES = {
     "Carbon Dioxide (CO2)": "carbon_dioxide",
     "Carbon Monoxide (CO)": "carbon_monoxide",
@@ -106,6 +108,7 @@ VARIABLES = {
     "Fine particules (<2.5 microns)": "pm2_5"
 }
 
+# Sampling method 
 def generate_grid(minx, miny, maxx, maxy, n):
     lons = np.linspace(minx, maxx, n)
     lats = np.linspace(miny, maxy, n)
@@ -118,16 +121,28 @@ def generate_grid(minx, miny, maxx, maxy, n):
 
 grid_points = generate_grid(minx, miny, maxx, maxy, n=10)
 
+# Variable name selection + keeping it active
+if "selected_var_label" not in st.session_state:
+        st.session_state["selected_var_label"] = "Carbon Dioxide (CO2)"
+
 selected_var_label = st.selectbox(
     "Select an air quality variable",
     list(VARIABLES.keys())
 )
 
+st.session_state["selected_var_label"] = selected_var_label
+
+# Variable code transltation + keeping it active
+if "selected_var" not in st.session_state:
+        st.session_state["selected_var"] = "carbon_dioxide"
+
 selected_var = VARIABLES[selected_var_label]
 
-# -----------------------------
-# Fetch AQ data
-# -----------------------------
+st.session_state["selected_var"] = selected_var
+
+
+# Fetch open-meteo data
+
 @st.cache_data
 def fetch_point(lat, lon, var):
     url = (
@@ -148,7 +163,11 @@ def fetch_point(lat, lon, var):
 
 data_points = []
 
+# Map generation
 if st.button("Generate Air Quality Map"):
+
+    if "deck" not in st.session_state:
+        st.session_state["deck"] = None
 
     with st.spinner("Fetching air quality data..."):
 
@@ -176,9 +195,9 @@ if st.button("Generate Air Quality Map"):
         st.warning("No data is available to build the concentration map")
         st.stop()
 
- # -----------------------------
-    # Color scale (simple AQI logic)
-    # -----------------------------
+
+    # Color scheme definition
+   
     vmin, vmax = df["value"].min(), df["value"].max()
 
     def color_scale(v):
@@ -193,9 +212,9 @@ if st.button("Generate Air Quality Map"):
 
     df["color"] = df["value"].apply(color_scale)
 
-    # -----------------------------
-    # PyDeck interactive map
-    # -----------------------------
+
+    # PyDeck interactive map display
+    
     st.info("Hover over points to get the current concentration")
 
     layer = pdk.Layer(
@@ -221,5 +240,7 @@ if st.button("Generate Air Quality Map"):
         initial_view_state=view_state,
         tooltip={"text": f"{selected_var_label}: {{value}}"}
     )
+
+    st.session_state["deck"] = deck
 
     st.pydeck_chart(deck)

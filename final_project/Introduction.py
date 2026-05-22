@@ -1,5 +1,4 @@
 import streamlit as st
-from pathlib import Path
 
 st.title("Programming with Spatial Data: Final Project")
 
@@ -19,7 +18,8 @@ This app serves to:
 - Select a specific european country of interest.
 - Fetch the data from the FIRMS and summarize it smartly.
 - Visualize precisely where the wildfires are actually happening.
-- Provide a live Windy map to show potential consequences of these fires.
+- Provide a live Windy map to see how these fires might evolve.
+- Generate air quality maps to grasp potential consequences of these fires.
 """)
 
 st.subheader("Navigation")

@@ -17,9 +17,10 @@ def load_world():
 world = load_world()
 europe = world[world["CONTINENT"] == "Europe"]
 
-# Convert GeoDataFrame → proper GeoJSON dict
+# Convert the GeoDataFrame into a proper GeoJSON dictonary
 europe_json = json.loads(europe.to_json())
 
+# Set the clickable map features
 layer = pdk.Layer(
     "GeoJsonLayer",
     data=europe_json,
@@ -53,6 +54,10 @@ event = st.pydeck_chart(
     on_select="rerun"
 )
 
+# Invalidation function to handle changes in dataset and timeframe selection
+def invalidate_data():
+    st.session_state.pop("df", None)
+
 # Initialize state once
 if "selected_country" not in st.session_state:
     st.session_state["selected_country"] = None
@@ -64,7 +69,11 @@ if event is not None:
 
     if objects:
         name = objects[0]["properties"]["NAME"]
-        st.session_state["selected_country"] = name
+        previous_country = st.session_state.get("selected_country")
+
+        if name != previous_country:
+            st.session_state["selected_country"] = name
+            invalidate_data()
 
 # Keeping selection active to re-use it later
 selected_country = st.session_state["selected_country"]
@@ -107,7 +116,7 @@ status_data = get_api_status()
 if status_data:
     df_status = pd.Series(status_data)
     st.subheader("API Status")
-    current_transactions = status_data.get("current_transaction", 0)
+    current_transactions = status_data.get("current_transactions", 0)
     transactions_limit = status_data.get("transaction_limit", 0)
     transaction_interval = status_data.get("transaction_interval", 0)
     col1, col2, col3 = st.columns(3)
@@ -124,7 +133,7 @@ def get_transaction_count():
         data = get_api_status()
         return data["current_transactions"]
     except:
-        return 0
+        st.error("Failed to get transactions count")
 
 # Getting datasets availability
 st.subheader("Available Datasets")
@@ -141,20 +150,25 @@ if st.button("Load Available Datasets"):
     start_count = get_transaction_count()
     df_avail = load_availability()
     st.session_state["df_avail"] = df_avail
-    st.dataframe(df_avail)
     end_count = get_transaction_count()
     st.success(f"Used transactions: {end_count - start_count}")
 
-# Keeping selected dataset active
+# Validating session state data
 if "df_avail" in st.session_state:
     df_avail = st.session_state["df_avail"]
-
     st.dataframe(df_avail)
 
+    if "selected_dataset" not in st.session_state:
+        st.session_state["selected_dataset"] = "MODIS_NRT"
+    
     selected_dataset = st.selectbox(
         "Select a dataset",
-        df_avail["data_id"].unique()
+        df_avail["data_id"].unique(),
+        #key="selected_dataset",
+        on_change=invalidate_data
     )
+
+    st.session_state["selected_dataset"] = selected_dataset
 
     # Detailed description of each dataset
     DATASET_DESCRIPTIONS = {
@@ -257,7 +271,6 @@ if "df_avail" in st.session_state:
     if selected_dataset:
         st.success(f"Selected dataset: {selected_dataset}")
 
-        # --- Description ---
         description = DATASET_DESCRIPTIONS.get(
         selected_dataset,
         "No description available."
@@ -285,23 +298,47 @@ else:
     st.stop()
 
 # Selection of timeframe
-days = st.slider("Days back", 1, 10, 1)
+st.info("Drag the cursor to set the desired timeframe")
+
+# Initialization of session state
+if "days" not in st.session_state:
+    st.session_state["days"] = 1
+
+days = st.slider("Desired timeframe (days back from now)",
+    min_value=1,
+    max_value=10,
+    step=1,
+    #key="days",
+    on_change=invalidate_data
+)
+
+if days:
+    st.success(f"Selected timeframe: {days} day(s)")
+
+# Keeping selection active
+st.session_state["days"] = days
 
 # Data source
 url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
 
 # FIRMS data fetching 
 if selected_country and st.button("Fetch FIRMS Data"):
-    st.subheader("Live Wildfires Data")
-    start_count = get_transaction_count()
-    df = pd.read_csv(url)
-    st.session_state["df"] = df
-    st.dataframe(df)
-    end_count = get_transaction_count()
-    st.success(f"Used {end_count - start_count} transactions")
+    try:
+        st.subheader("Live Wildfires Data")
+        start_count = get_transaction_count()
+        df = pd.read_csv(url)
+        st.session_state["df"] = df
+        end_count = get_transaction_count()
+        st.success(f"Used {end_count - start_count} transactions")
+    except Exception as e:
+        st.warning("Failed to fetch data")
+        st.error("error:", e)
 
+# Displaying the fetched dataframe
 if "df" in st.session_state:
-    st.session_state["df"] = df
+    df = st.session_state["df"]
+    days = st.session_state["days"]
+    st.dataframe(df)
 
     # Statistical description
     st.subheader("📊 Basic Statistics")
@@ -323,4 +360,4 @@ if "df" in st.session_state:
         col3.metric("Time trend", "N/A")
 
 else:
-    st.error("Fetch data first")
+    st.info("Click 'Fetch FIRMS data' ")

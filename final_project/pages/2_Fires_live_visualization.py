@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
 import pydeck as pdk
 import folium
 from streamlit_folium import st_folium
@@ -9,10 +8,10 @@ st.title("Fires Visualization")
 
 # Existing data check
 if "df" not in st.session_state:
-    st.warning("No data available. Please fetch data on the main page first.")
+    st.warning("No data available. Please fetch data on page 1 first.")
     st.stop()
 else:
-    df = st.session_state["df"]
+    df = st.session_state["df"].copy()
 
 # Data validation
 if df.empty:
@@ -24,43 +23,84 @@ if "latitude" not in df.columns or "longitude" not in df.columns:
     st.error("Missing latitude/longitude columns.")
     st.stop()
 
-# Display map
-st.subheader(" Current wildfires visualization")
+# Making sure lat and long are integers
+df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
 
-map_df = df.rename(columns={"latitude": "lat", "longitude": "lon"})
+df_map1 = df.dropna(subset=["latitude", "longitude"]).copy()
+
+# Display map
+st.subheader("Current wildfires visualization")
+
+map_df = df_map1.rename(columns={"latitude": "lat", "longitude": "lon"})
 
 st.map(map_df)
 
-# Setting date as string type
-df["acq_date"] = df["acq_date"].astype(str)
+df_time = df_map1.copy()
 
-# Ensure acq_time is zero-padded string
-df["acq_time"] = df["acq_time"].astype(str).str.zfill(4)
+# Date + time check
+if "acq_date" not in df_time.columns or "acq_time" not in df_time.columns:
+    st.warning("Missing acquisition date or time, so time categories cannot be created.")
+    st.stop()
 
 # Setting the right date format
-df["acq_datetime"] = pd.to_datetime(
-    df["acq_date"] + " " + df["acq_time"],
+date_str = df_time["acq_date"].astype(str).str[:10]
+
+# Setting the right time format
+time_str = (
+        df_time["acq_time"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+        .str.extract(r"(\d+)", expand=False)
+        .fillna("")
+        .str.zfill(4)
+    )
+
+# Handling different time formats
+valid_time = (
+    time_str.str.len().eq(4) &
+    time_str.str[:2].astype(int).between(0, 23) &
+    time_str.str[2:].astype(int).between(0, 59)
+)
+
+# Clear dataframe separation
+df_time = df_time[valid_time].copy()
+time_str = time_str[valid_time]
+
+# Setting the right date format
+df_time["acq_datetime_new"] = pd.to_datetime(
+    date_str + " " + time_str,
     format="%Y-%m-%d %H%M",
     errors="coerce"
 )
 
-# Convert to GeoDataFrame
-gdf = gpd.GeoDataFrame(
-    df,
-    geometry=gpd.points_from_xy(df.longitude, df.latitude),
-    crs="EPSG:4326"
-)
+# Keeping only relevant columns
+df_new = df_time.dropna(
+    subset=["latitude", "longitude", "acq_datetime_new"]
+).copy()
+
+# Error handling
+if df_new.empty:
+    st.warning("No valid fire detections after parsing coordinates and acquisition time.")
+    st.stop()
 
 # Setting time reference
-now = pd.Timestamp.now()
+dt_max = df_new["acq_datetime_new"].max()
 
 # Time categories
-df1 = df[df["acq_datetime"] >= (now - pd.Timedelta(hours=1))].copy()
-df2 = df[(df["acq_datetime"] >= (now - pd.Timedelta(hours=4))) &
-         (df["acq_datetime"] < (now - pd.Timedelta(hours=1)))].copy()
-df3 = df[(df["acq_datetime"] >= (now - pd.Timedelta(hours=12))) &
-         (df["acq_datetime"] < (now - pd.Timedelta(hours=4)))].copy()
-df4 = df[df["acq_datetime"] < (now - pd.Timedelta(hours=12))].copy()
+df1 = df_new[df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=1))].copy()
+
+df2 = df_new[
+    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=4))) &
+    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=1)))
+].copy()
+
+df3 = df_new[
+    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=12))) &
+    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=4)))
+    ].copy()
+
+df4 = df_new[df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=12))].copy()
 
 # Add category labels
 df1["category"] = "≤1h"
@@ -117,20 +157,21 @@ deck_1 = pdk.Deck(
 # Map visualization
 st.pydeck_chart(deck_1)
 
-
+# Folium map creation
 st.subheader("Multi layer map")
 
 # Center map definition
-center_lat = df["latitude"].mean()
-center_lon = df["longitude"].mean()
+center_lat = df_map1["latitude"].mean()
+center_lon = df_map1["longitude"].mean()
 
+# Layers selection options
 available_layers = {
-    "topographic": "OpenTopoMap",
-    "satellite": "Esri.WorldImagery",
     "base map": "CartoDB positron",
-    "terrain": "Stamen Terrain"
+    "topographic": "OpenTopoMap",
+    "satellite": "Esri.WorldImagery"
 }
 
+# Actual layer selection
 selection = st.selectbox(
     label="Select the desired map layer",
     options=available_layers.keys()
@@ -138,8 +179,8 @@ selection = st.selectbox(
 
 st.info("Click on points to get more information")
 
+# Selected layer definition
 tile = available_layers[selection]
-
 
 # Map visualization
 m = folium.Map(
@@ -148,10 +189,7 @@ m = folium.Map(
     tiles=tile
     )
 
-
-# ---------------------------------------------------
-# Helper function to add category markers
-# ---------------------------------------------------
+# Function to add time categories markers + metadata
 def add_category_markers(data, color, name):
 
     feature_group = folium.FeatureGroup(name=name)
@@ -168,7 +206,7 @@ def add_category_markers(data, color, name):
             fill_opacity=0.75,
 
             popup=f"""
-            <b>Detection time:</b> {row['acq_datetime']}<br>
+            <b>Detection time:</b> {row['acq_datetime_new']}<br>
             <b>Brightness:</b> {row.get('brightness', 'N/A')}<br>
             <b>Confidence:</b> {row.get('confidence', 'N/A')}
             """
@@ -176,9 +214,9 @@ def add_category_markers(data, color, name):
 
     feature_group.add_to(m)
 
-# ---------------------------------------------------
+
 # Add already-defined time categories
-# ---------------------------------------------------
+
 if not df1.empty:
     add_category_markers(df1, "darkred", "Fires category ≤1 [h]")
 
@@ -191,14 +229,13 @@ if not df3.empty:
 if not df4.empty:
     add_category_markers(df4, "yellow", "Fires category >12 [h]")
 
-# ---------------------------------------------------
-# Layer control
-# ---------------------------------------------------
+
+# Layer + fire categories control
 folium.LayerControl(collapsed=True).add_to(m)
 
-# ---------------------------------------------------
+
 # Add legend
-# ---------------------------------------------------
+
 legend_html = """
 <div style="
 position: fixed;
@@ -247,7 +284,7 @@ border:1px solid black;"></i>
 
 </div>
 """
-
+# Show folium map
 m.get_root().html.add_child(folium.Element(legend_html))
 
 st_folium(m, width=700, height=500)
