@@ -5,7 +5,9 @@ import pydeck as pdk
 import json
 import requests
 
-st.title("FIRMS Country Explorer")
+st.header("Country Selection")
+
+st.info("Click on the desired country")
 
 # Load base map
 @st.cache_data
@@ -81,8 +83,6 @@ selected_country = st.session_state["selected_country"]
 # Selection status tool
 if selected_country:
     st.success(f"Selected country: {selected_country}")
-else:
-    st.info("Click on a country")
 
 # Getting geographical extent of the selected country
 if selected_country:
@@ -112,10 +112,11 @@ def get_api_status():
 
 status_data = get_api_status()
 
+st.header("API Status")
+
 # Initial API status
 if status_data:
     df_status = pd.Series(status_data)
-    st.subheader("API Status")
     current_transactions = status_data.get("current_transactions", 0)
     transactions_limit = status_data.get("transaction_limit", 0)
     transaction_interval = status_data.get("transaction_interval", 0)
@@ -136,7 +137,7 @@ def get_transaction_count():
         st.error("Failed to get transactions count")
 
 # Getting datasets availability
-st.subheader("Available Datasets")
+st.header("Available Datasets")
 
 da_url = f"https://firms.modaps.eosdis.nasa.gov/api/data_availability/csv/{API_KEY}/all"
 
@@ -153,6 +154,7 @@ if st.button("Load Available Datasets"):
     end_count = get_transaction_count()
     st.success(f"Used transactions: {end_count - start_count}")
 
+
 # Validating session state data
 if "df_avail" in st.session_state:
     df_avail = st.session_state["df_avail"]
@@ -161,9 +163,14 @@ if "df_avail" in st.session_state:
     if "selected_dataset" not in st.session_state:
         st.session_state["selected_dataset"] = "MODIS_NRT"
     
+    st.header("Dataset selection")
+
+    st.info("Select a dataset")
+
     selected_dataset = st.selectbox(
-        "Select a dataset",
-        df_avail["data_id"].unique(),
+        label="",
+        label_visibility="collapsed",
+        options=df_avail["data_id"].unique(),
         #key="selected_dataset",
         on_change=invalidate_data
     )
@@ -269,6 +276,7 @@ if "df_avail" in st.session_state:
     
     # Getting datasets infos
     if selected_dataset:
+
         st.success(f"Selected dataset: {selected_dataset}")
 
         description = DATASET_DESCRIPTIONS.get(
@@ -276,12 +284,21 @@ if "df_avail" in st.session_state:
         "No description available."
         )
 
-        st.markdown("### General description")
+        st.header("General description")
         st.info(description)
+
+        if selected_dataset == "GOES_NRT":
+            st.warning("IMPORTANT: unappropriate dataset for Europe")
+
+        elif selected_dataset == "BA_MODIS":
+            st.warning("IMPORTANT: unappropriate dataset for live wildfire tracking")
+
+        elif selected_dataset == "BA_VIIRS":
+            st.warning("IMPORTANT: unappropriate dataset for live wildfire tracking")
 
         metadata = DATASET_METADATA.get(selected_dataset, {})
 
-        st.markdown("### Dataset metadata")
+        st.header("Dataset metadata")
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -298,13 +315,17 @@ else:
     st.stop()
 
 # Selection of timeframe
-st.info("Drag the cursor to set the desired timeframe")
+st.header("Timeframe selection")
+
+st.info("Drag the cursor to set the desired timeframe (days back from now)")
 
 # Initialization of session state
 if "days" not in st.session_state:
     st.session_state["days"] = 1
 
-days = st.slider("Desired timeframe (days back from now)",
+days = st.slider(
+    label="",
+    label_visibility="collapsed",
     min_value=1,
     max_value=10,
     step=1,
@@ -318,13 +339,15 @@ if days:
 # Keeping selection active
 st.session_state["days"] = days
 
-# Data source
-url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
-
 # FIRMS data fetching 
 if selected_country and st.button("Fetch FIRMS Data"):
+
+    st.header("Live Wildfires Data")
+
+    # Data source
+    url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{API_KEY}/{selected_dataset}/{minx},{miny},{maxx},{maxy}/{days}"
+    
     try:
-        st.subheader("Live Wildfires Data")
         start_count = get_transaction_count()
         df = pd.read_csv(url)
         st.session_state["df"] = df
@@ -334,6 +357,12 @@ if selected_country and st.button("Fetch FIRMS Data"):
         st.warning("Failed to fetch data")
         st.error("error:", e)
 
+elif not selected_country:
+    st.warning("Select a country to be able to fetch its data")
+
+else:
+    st.info("Click 'Fetch FIRMS data' ")
+
 # Displaying the fetched dataframe
 if "df" in st.session_state:
     df = st.session_state["df"]
@@ -341,23 +370,37 @@ if "df" in st.session_state:
     st.dataframe(df)
 
     # Statistical description
-    st.subheader("📊 Basic Statistics")
+    st.header("Basic Statistics")
 
     col1, col2, col3 = st.columns(3)
 
     col1.metric("Total detections", len(df))
 
+    # Average confidence computing and error handling
     if "confidence" in df.columns:
-        col2.metric("Average confidence",
-                    round(df["confidence"].mean(), 2))
-    else:
-        col2.metric("Average confidence", "N/A")
+        confidence_values = pd.to_numeric(df["confidence"], errors="coerce")
 
+        if confidence_values.notna().any():
+            col2.metric(
+                "Average confidence [%]",
+                round(confidence_values.mean(), 2)
+            )
+        else:
+            col2.metric("Average confidence [%]", "N/A")
+    else:
+        col2.metric("Average confidence [%]", "N/A")
+
+
+    # Average brightness computing and error handling
     if "brightness" in df.columns:
-        col3.metric("Average brightness",
-                    round(df["brightness"].mean(), 2))
-    else:
-        col3.metric("Time trend", "N/A")
+        brightness_values = pd.to_numeric(df["brightness"], errors="coerce")
 
-else:
-    st.info("Click 'Fetch FIRMS data' ")
+        if brightness_values.notna().any():
+            col3.metric(
+                "Average brightness [K]",
+                round(brightness_values.mean(), 2)
+            )
+        else:
+            col3.metric("Average brightness [K]", "N/A")
+    else:
+        col3.metric("Average brightness [K]", "N/A")

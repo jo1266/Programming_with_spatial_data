@@ -5,9 +5,7 @@ import pydeck as pdk
 import numpy as np
 
 
-st.title("Potential wildfires evolution and consequences")
-
-st.subheader("Live windy data")
+st.header("Live Windy map")
 
 # Data availability check
 if "selected_country" not in st.session_state:
@@ -125,9 +123,12 @@ grid_points = generate_grid(minx, miny, maxx, maxy, n=10)
 if "selected_var_label" not in st.session_state:
         st.session_state["selected_var_label"] = "Carbon Dioxide (CO2)"
 
+st.info("Select an air quality variable")
+
 selected_var_label = st.selectbox(
-    "Select an air quality variable",
-    list(VARIABLES.keys())
+    label="",
+    label_visibility="collapsed",
+    options=list(VARIABLES.keys())
 )
 
 st.session_state["selected_var_label"] = selected_var_label

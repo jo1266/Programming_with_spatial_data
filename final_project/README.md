@@ -15,12 +15,13 @@ Streamlit interface that allow users to: fetch live wildfires data from the FIRM
 
 ## Setup instruction
 
-* download the global geo packages from the channel "conda forge"
-* download these specific libraries via pip: cmcrameri, pydeck, streamlit, streamlit-folium, 
+* The file "requirements.txt" indicates which libraries are used within this project's code
+* These specific libraries are the following: streamlit, pandas, requests, geopandas, pydeck, folium,streamlit_folium, numpy 
 
 ## Execution order
 
 * Download the "final_project" folder locally on your machine
-* Download the required packages and dependencies
+* Download the required libraries
 * In your terminal, go to the folder "final_project"
 * From there, enter the following command: streamlit run introduction.py
+* Or... Simply click on this link to access the deployed app: https://wildfires-across-europe.streamlit.app/

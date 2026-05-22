@@ -4,7 +4,9 @@ import pydeck as pdk
 import folium
 from streamlit_folium import st_folium
 
-st.title("Fires Visualization")
+st.header("Basic map visualization")
+
+st.info("FYI: color hue differences come from clustered points")
 
 # Existing data check
 if "df" not in st.session_state:
@@ -30,8 +32,6 @@ df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
 df_map1 = df.dropna(subset=["latitude", "longitude"]).copy()
 
 # Display map
-st.subheader("Current wildfires visualization")
-
 map_df = df_map1.rename(columns={"latitude": "lat", "longitude": "lon"})
 
 st.map(map_df)
@@ -88,25 +88,25 @@ if df_new.empty:
 dt_max = df_new["acq_datetime_new"].max()
 
 # Time categories
-df1 = df_new[df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=1))].copy()
+df1 = df_new[df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=6))].copy()
 
 df2 = df_new[
-    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=4))) &
-    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=1)))
+    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=12))) &
+    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=6)))
 ].copy()
 
 df3 = df_new[
-    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=12))) &
-    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=4)))
+    (df_new["acq_datetime_new"] >= (dt_max - pd.Timedelta(hours=24))) &
+    (df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=12)))
     ].copy()
 
-df4 = df_new[df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=12))].copy()
+df4 = df_new[df_new["acq_datetime_new"] < (dt_max - pd.Timedelta(hours=24))].copy()
 
 # Add category labels
-df1["category"] = "≤1h"
-df2["category"] = "1–4h"
-df3["category"] = "4–12h"
-df4["category"] = ">12h"
+df1["category"] = "≤6h"
+df2["category"] = "6–12h"
+df3["category"] = "12–24h"
+df4["category"] = ">24h"
 
 # Merge categories
 df_all = pd.concat([df1, df2, df3, df4])
@@ -116,15 +116,15 @@ df_all = df_all.rename(columns={"latitude": "lat", "longitude": "lon"})
 
 # Categories color encoding
 color_map = {
-    "≤1h": [139, 0, 0],       # dark red
-    "1–4h": [255, 0, 0],      # red
-    "4–12h": [255, 165, 0],   # orange
-    ">12h": [255, 255, 0],    # yellow
+    "≤6h": [139, 0, 0],       # dark red
+    "6–12h": [255, 0, 0],      # red
+    "12–24h": [255, 165, 0],   # orange
+    ">24h": [255, 255, 0],    # yellow
 }
 
 df_all["color"] = df_all["category"].map(color_map)
 
-st.subheader("Wirldfires starting time categories")
+st.header("Wildfires starting time")
 
 st.info("Hover over points to get information")
 
@@ -158,7 +158,7 @@ deck_1 = pdk.Deck(
 st.pydeck_chart(deck_1)
 
 # Folium map creation
-st.subheader("Multi layer map")
+st.header("Multi layer map")
 
 # Center map definition
 center_lat = df_map1["latitude"].mean()
@@ -171,9 +171,12 @@ available_layers = {
     "satellite": "Esri.WorldImagery"
 }
 
+st.info("Select the desired map layer")
+
 # Actual layer selection
 selection = st.selectbox(
-    label="Select the desired map layer",
+    label="",
+    label_visibility="collapsed",
     options=available_layers.keys()
 )
 
@@ -207,8 +210,8 @@ def add_category_markers(data, color, name):
 
             popup=f"""
             <b>Detection time:</b> {row['acq_datetime_new']}<br>
-            <b>Brightness:</b> {row.get('brightness', 'N/A')}<br>
-            <b>Confidence:</b> {row.get('confidence', 'N/A')}
+            <b>Brightness [K]:</b> {row.get('brightness', 'N/A')}<br>
+            <b>Confidence [%]:</b> {row.get('confidence', 'N/A')}
             """
         ).add_to(feature_group)
 
@@ -218,16 +221,16 @@ def add_category_markers(data, color, name):
 # Add already-defined time categories
 
 if not df1.empty:
-    add_category_markers(df1, "darkred", "Fires category ≤1 [h]")
+    add_category_markers(df1, "darkred", "Fires category ≤6 [h]")
 
 if not df2.empty:
-    add_category_markers(df2, "red", "Fires category 1-4 [h]")
+    add_category_markers(df2, "red", "Fires category 6-12 [h]")
 
 if not df3.empty:
-    add_category_markers(df3, "orange", "Fires category 4-12 [h]")
+    add_category_markers(df3, "orange", "Fires category 12-24 [h]")
 
 if not df4.empty:
-    add_category_markers(df4, "yellow", "Fires category >12 [h]")
+    add_category_markers(df4, "yellow", "Fires category >24 [h]")
 
 
 # Layer + fire categories control
@@ -258,21 +261,21 @@ width:12px;
 height:12px;
 display:inline-block;
 border-radius:50%;"></i>
-≤1 hour ago<br>
+≤6 hour ago<br>
 
 <i style="background:red;
 width:12px;
 height:12px;
 display:inline-block;
 border-radius:50%;"></i>
-1-4 hours ago<br>
+6-12 hours ago<br>
 
 <i style="background:orange;
 width:12px;
 height:12px;
 display:inline-block;
 border-radius:50%;"></i>
-4-12 hours ago<br>
+12-24 hours ago<br>
 
 <i style="background:yellow;
 width:12px;
@@ -280,7 +283,7 @@ height:12px;
 display:inline-block;
 border-radius:50%;
 border:1px solid black;"></i>
->12 hours ago
+>24 hours ago
 
 </div>
 """
